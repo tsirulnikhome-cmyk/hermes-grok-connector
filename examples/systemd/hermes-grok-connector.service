@@ -1,0 +1,16 @@
+# hermes-grok-connector as a systemd user service.
+#   cp to ~/.config/systemd/user/ && systemctl --user enable --now hermes-grok-connector
+# Secrets: use env: references with an EnvironmentFile (chmod 600), since there is no macOS Keychain.
+[Unit]
+Description=hermes-grok-connector (Grok custom connector to Hermes agents)
+After=network-online.target
+
+[Service]
+Environment=HGC_CONFIG=%h/.hermes-grok-connector/people.yaml
+EnvironmentFile=%h/.hermes-grok-connector/secrets.env
+ExecStart=%h/hermes-grok-connector/.venv/bin/hermes-grok-connector serve
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

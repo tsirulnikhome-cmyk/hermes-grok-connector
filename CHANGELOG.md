@@ -1,0 +1,13 @@
+# Changelog
+
+## 0.1.0 (2026-11-01)
+
+First public version.
+
+- Per-person private connector addresses (`/c/<key>/mcp`) for Grok custom connectors (app and Tesla).
+- Five tools: `my_context`, `ask_my_agent`, `remember`, `recall`, `forget`; all ask Grok to work silently.
+- Lasting memory per person: always-loaded profile (capped) and a searchable notebook; updates via `replaces`.
+- Live briefing inside the connector instructions.
+- Hermes API server backend (`/v1/responses`, multi-profile `/p/<profile>/...`), replies chained for the day.
+- Secrets as references only (`env:`, `keychain:`, `file:`).
+- Example car-channel tool limits for Hermes profiles.

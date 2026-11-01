@@ -1,0 +1,39 @@
+# hermes-grok-connector configuration. Copy to ~/.hermes-grok-connector/people.yaml and edit.
+# Secrets are always references, never values:  env:VAR  |  keychain:service/account  |  file:/path
+
+server:
+  public_host: agent.example.com   # the HTTPS hostname Grok reaches (e.g. a Cloudflare Tunnel hostname)
+  host: 127.0.0.1                  # listen locally; the tunnel forwards to it
+  port: 8797
+
+memory_root: ~/.hermes-grok-connector/memory   # one folder per person, unless memory_dir is set
+
+# Defaults for every person's agent: Hermes' API server on this machine.
+agent_defaults:
+  base_url: http://127.0.0.1:8642
+  path: /v1/responses
+  model: hermes-agent
+  timeout: 170
+
+people:
+  alice:
+    name: Alice
+    url_key: keychain:hermes-grok-connector/alice        # the private address key (hermes-grok-connector new-key)
+    topics: >-
+      her tasks and reminders, notes, the rental houses and tenants, home internet, travel and hotels,
+      bills, and health benefits and doctors
+    agent:
+      api_key: keychain:hermes-api/alice                 # the default Hermes profile's API_SERVER_KEY
+    # Optional: extra lines for the start-of-conversation briefing, e.g. today's reminders from your own script.
+    # context_command: ["/usr/bin/python3", "/Users/alice/bin/todays_reminders.py"]
+
+  bob:
+    name: Bob
+    url_key: env:HGC_KEY_BOB
+    topics: his reminders, the lake cabin bookings and guests, and family health benefits
+    agent:
+      path: /p/bob/v1/responses                          # Hermes multi-profile gateway: Bob's own profile
+      api_key: env:HERMES_API_KEY_BOB                    # that profile's API_SERVER_KEY
+
+# Optional: replace the voice instructions sent to the agent with every request ({name} is the person).
+# voice_instructions: "{name} is talking to you by voice ..."

@@ -1,0 +1,19 @@
+# Car-channel tool limits for Hermes profiles (applied by examples/hermes_tool_limits.py).
+# For each profile: the built-in toolsets to allow, and which MCP servers to copy as <server>_car with a filter.
+# include: only these tools. exclude: everything except these (fnmatch globs). A server not listed is not in the car.
+
+profiles:
+  default:                   # ~/.hermes
+    builtin: [memory]
+    servers:
+      houses:
+        exclude: ["*email*"]
+      finance:
+        include: [fin_bills, fin_benefits, fin_hsa]
+      hotels: {}             # all tools
+  bob:                       # ~/.hermes/profiles/bob
+    builtin: [memory]
+    servers:
+      cabin:
+        exclude: ["*email*", "*attachment*"]
+        env: {CABIN_PEOPLE: "bob:Bob"}     # optional extra environment for the car copy

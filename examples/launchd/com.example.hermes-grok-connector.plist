@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- hermes-grok-connector as a LaunchAgent (runs as you, so keychain: secrets work).
+     Edit the paths, then: cp to ~/Library/LaunchAgents/ && launchctl bootstrap gui/$(id -u) <file> -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.example.hermes-grok-connector</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/YOU/hermes-grok-connector/.venv/bin/hermes-grok-connector</string>
+    <string>serve</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict><key>HGC_CONFIG</key><string>/Users/YOU/.hermes-grok-connector/people.yaml</string></dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>30</integer>
+  <key>StandardOutPath</key><string>/Users/YOU/.hermes-grok-connector/connector.log</string>
+  <key>StandardErrorPath</key><string>/Users/YOU/.hermes-grok-connector/connector.log</string>
+</dict>
+</plist>
