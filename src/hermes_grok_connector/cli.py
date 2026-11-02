@@ -20,7 +20,8 @@ import sys
 
 from . import config as config_mod
 from .agent import AgentClient
-from .memory import Memory, MemoryError_
+from .honcho_memory import memory_for
+from .memory import MemoryError_
 from .server import extra_context, serve
 
 
@@ -51,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
     elif cmd == "ask" and len(args) >= 3:
         print(AgentClient(cfg).ask(person, " ".join(args[2:])))
     elif cmd == "memory" and len(args) >= 3:
-        mem, sub = Memory(person.memory_dir), args[2]
+        mem, sub = memory_for(person), args[2]
         try:
             if sub == "show":
                 print(json.dumps(mem.dump(), indent=1, ensure_ascii=False))

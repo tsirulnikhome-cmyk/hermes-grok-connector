@@ -53,6 +53,20 @@ class Agent:
 
 
 @dataclass
+class HonchoServer:
+    base_url: str = "http://127.0.0.1:8000"
+    workspace: str = "hermes"
+    api_key: str = ""                     # secret reference; empty when the server runs without auth
+
+
+@dataclass
+class HonchoPeer:
+    server: HonchoServer
+    observer: str                         # the AI peer; use the agent's aiPeer to share one memory with it
+    peer: str                             # the person's peer
+
+
+@dataclass
 class Person:
     id: str
     name: str
@@ -61,6 +75,7 @@ class Person:
     memory_dir: Path
     topics: str = DEFAULT_TOPICS
     context_command: list[str] = field(default_factory=list)  # extra briefing lines, e.g. today's reminders
+    honcho: HonchoPeer | None = None      # optional: keep this person's memory in Honcho instead of files
 
 
 @dataclass
@@ -83,6 +98,7 @@ def load(path: str | Path) -> Config:
     server = raw.get("server") or {}
     defaults = raw.get("agent_defaults") or {}
     memory_root = Path(raw.get("memory_root", "~/.hermes-grok-connector/memory")).expanduser()
+    honcho = HonchoServer(**raw["honcho"]) if raw.get("honcho") else None
     people = {}
     for pid, p in (raw.get("people") or {}).items():
         if not re.fullmatch(r"[a-z0-9_-]+", pid):
@@ -92,10 +108,16 @@ def load(path: str | Path) -> Config:
         agent = Agent(**{**defaults, **(p.get("agent") or {})})
         agent.session_key = agent.session_key or f"grok-{pid}"
         cmd = p.get("context_command") or []
+        peer = None
+        if p.get("honcho"):
+            if not honcho:
+                raise ConfigError(f"person {pid}: has a honcho block, but there is no top-level honcho: section")
+            hp = p["honcho"] if isinstance(p["honcho"], dict) else {}
+            peer = HonchoPeer(honcho, observer=hp.get("observer", f"{pid}-agent"), peer=hp.get("peer", pid))
         people[pid] = Person(id=pid, name=p.get("name", pid.title()), url_key=p["url_key"], agent=agent,
                              memory_dir=Path(p.get("memory_dir", memory_root / pid)).expanduser(),
                              topics=p.get("topics", DEFAULT_TOPICS),
-                             context_command=cmd if isinstance(cmd, list) else str(cmd).split())
+                             context_command=cmd if isinstance(cmd, list) else str(cmd).split(), honcho=peer)
     if not people:
         raise ConfigError("no people configured")
     if not server.get("public_host"):

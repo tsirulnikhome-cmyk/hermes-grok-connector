@@ -91,7 +91,7 @@ The full text and test phrases are in [docs/grok-and-tesla.md](docs/grok-and-tes
 
 - [Setup](docs/setup.md): install, configuration, Hermes API server, Cloudflare Tunnel, run as a service
 - [Grok and Tesla](docs/grok-and-tesla.md): adding the connector, driver profiles, the spoken instruction, tests
-- [Memory](docs/memory.md): profile vs notebook, what is saved, limits, viewing and editing
+- [Memory](docs/memory.md): profile vs notebook, what is saved, limits, viewing and editing, optional Honcho backend
 - [Car tool limits](docs/tool-limits.md): give the car channel only the agent tools you want (e.g. no email, no bank)
 - [Security and privacy](docs/security.md)
 - [Lessons learned](docs/lessons-learned.md): what we found out about Grok connectors the hard way

@@ -72,3 +72,44 @@ Hermes has its own memory (`MEMORY.md` / `USER.md`), injected into every chat of
 several people (for example a family iMessage line), personal notes would leak into everyone's chats. A separate
 per-person store keeps the car memory private to its owner. If a profile serves exactly one person, you can still
 point `memory_dir` at a folder the agent also exposes to that person through a small tool.
+
+## Optional: Honcho instead of files
+
+The file memory has no layer between the model and the raw text: it stores sentences, matches words ("car" won't find
+"Tesla"), and only merges near-identical repeats. That's fine for a short list and gets worse as the list grows.
+[Honcho](https://github.com/plastic-labs/honcho) (self-hosted, AGPL) is that missing layer: a worker turns
+conversations into separate facts, keeps a short card per person, and searches by meaning. If the person's Hermes agent
+uses Honcho too, the car and their chats share one memory.
+
+Configure it per person; anyone without a `honcho:` block stays on files:
+
+```yaml
+honcho:
+  base_url: http://127.0.0.1:8000
+  workspace: family
+  api_key: keychain:honcho/connector
+people:
+  alice:
+    honcho: {observer: alice-agent, peer: alice}   # observer = the aiPeer in her agent's honcho.json
+```
+
+`hermes-grok-connector memory alice add …` works the same, which is also how to bring old notes across.
+
+What we learned self-hosting it with Hermes (Honcho and the Hermes plugin change quickly, so check current docs):
+
+- **Choose the embedding model carefully.** Its size is fixed for the life of the database; changing the model means
+  wiping and re-importing. Local `bge-m3` through Ollama (1024 dimensions, many languages) ranked well for us.
+  `qwen3-embedding` did not: it expects an instruction prefix on queries that Honcho doesn't add, so short generic facts
+  came first for every question.
+- **Non-default vector size:** run `scripts/configure_embeddings.py --yes` after migrations, or Honcho refuses to start.
+- **Models need tool calling.** Honcho's own settings work with an Anthropic key; Claude Haiku is enough for the
+  background worker.
+- **The worker batches.** It waits for about a page of text or 30 minutes, so new facts don't appear at once.
+- **Key in `honcho.json`.** For a local base URL, the Hermes plugin ignores `HONCHO_API_KEY` from `.env` and sends a
+  placeholder. With auth on, put `apiKey` in the host block (chmod 600).
+- **`hermes plugins enable honcho` can drop `memory.provider`.** Set it again afterwards and check `hermes memory status`.
+- **Keep automation out of a person's memory.** One-shot runs have no sender id, so don't use `pinUserPeer` on a shared
+  profile. Map real senders with `userPeerAliases` (phone numbers, and `api` for the car channel), set `peerName` to a
+  holding peer, and set `observe_me: false` on it.
+- **Agents with built-in notes:** the plugin mirrors only `user` writes, not `memory` ones. Tell the agent in its
+  `SOUL.md` to save facts about the person with `honcho_conclude`.

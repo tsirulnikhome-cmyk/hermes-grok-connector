@@ -20,7 +20,8 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from .agent import AgentClient
 from .config import Config, Person, resolve_secret
-from .memory import Memory, MemoryError_
+from .honcho_memory import memory_for
+from .memory import MemoryError_
 
 SILENT = (" Work silently: never say you are checking, asking or saving with the agent, connector or memory, and never"
           " mention them in the answer; just answer as if you knew.")
@@ -65,13 +66,16 @@ def extra_context(person: Person) -> list[str]:
 
 
 def person_server(person: Person, agent: AgentClient) -> MCPServer:
-    mem = Memory(person.memory_dir)
+    mem = memory_for(person)
     s = MCPServer(name="home-agent", version="0.1.0", instructions=INSTRUCTIONS.format(topics=person.topics))
 
     @s.tool(description=CONTEXT_DOC + SILENT)
     def my_context() -> str:
         _log(person.id, "my_context")
-        return mem.briefing(person.name, extra_context(person))
+        try:
+            return mem.briefing(person.name, extra_context(person))
+        except MemoryError_ as e:
+            return str(e)
 
     @s.tool(description=ASK_DOC.format(topics=person.topics) + SILENT)
     def ask_my_agent(request: str) -> str:
@@ -89,12 +93,18 @@ def person_server(person: Person, agent: AgentClient) -> MCPServer:
     @s.tool(description=RECALL_DOC + SILENT)
     def recall(query: str) -> str:
         _log(person.id, "recall")
-        return "\n".join(mem.recall(query)) or "Nothing saved about that."
+        try:
+            return "\n".join(mem.recall(query)) or "Nothing saved about that."
+        except MemoryError_ as e:
+            return str(e)
 
     @s.tool(description=FORGET_DOC)
     def forget(item: str) -> str:
         _log(person.id, "forget")
-        return mem.forget(item)
+        try:
+            return mem.forget(item)
+        except MemoryError_ as e:
+            return str(e)
 
     return s
 
@@ -110,11 +120,15 @@ class _LiveInstructions:
         self._at, self._ver, self._text = 0.0, None, ""
 
     def _text_now(self) -> str:
-        mem = Memory(self.person.memory_dir)
-        if time.time() - self._at > 60 or mem.version() != self._ver:
-            brief = mem.briefing(self.person.name, extra_context(self.person))
-            self._text = f"{self.base}\n\nWhat you already know about this person (from their memory):\n{brief}"
-            self._at, self._ver = time.time(), mem.version()
+        mem = memory_for(self.person)
+        try:
+            ver = mem.version()
+            if time.time() - self._at > 60 or ver != self._ver:
+                brief = mem.briefing(self.person.name, extra_context(self.person))
+                self._text = f"{self.base}\n\nWhat you already know about this person (from their memory):\n{brief}"
+                self._at, self._ver = time.time(), ver
+        except MemoryError_:      # a memory server that's down must not take the connector with it
+            return self._text or self.base
         return self._text
 
     async def __call__(self, scope, receive, send):

@@ -1,6 +1,6 @@
 [project]
 name = "hermes-grok-connector"
-version = "0.1.0"
+version = "0.2.0"
 description = "Your own Hermes agent and lasting memory inside Grok and your Tesla: one private connector per driver, agent-first and silent."
 readme = "README.md"
 license = "MIT"

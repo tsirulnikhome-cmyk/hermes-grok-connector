@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 (2026-11-01)
+
+- Optional Honcho memory backend, per person (`honcho:` in the config, docs/memory.md): organized facts, a card per
+  person, search by meaning, and one memory shared with the person's Hermes agent. Plain files stay the default.
+- The connector keeps working when the memory server is down: tools say so, and the briefing falls back.
+
 ## 0.1.0 (2026-11-01)
 
 First public version.

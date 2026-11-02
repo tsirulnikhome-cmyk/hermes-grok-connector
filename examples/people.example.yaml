@@ -8,6 +8,13 @@ server:
 
 memory_root: ~/.hermes-grok-connector/memory   # one folder per person, unless memory_dir is set
 
+# Optional: keep memory in a self-hosted Honcho instead of files, for the people who have a honcho: block below.
+# See docs/memory.md. Base URL, workspace and a secret reference for its key:
+# honcho:
+#   base_url: http://127.0.0.1:8000
+#   workspace: family
+#   api_key: keychain:honcho/connector
+
 # Defaults for every person's agent: Hermes' API server on this machine.
 agent_defaults:
   base_url: http://127.0.0.1:8642
@@ -26,6 +33,8 @@ people:
       api_key: keychain:hermes-api/alice                 # the default Hermes profile's API_SERVER_KEY
     # Optional: extra lines for the start-of-conversation briefing, e.g. today's reminders from your own script.
     # context_command: ["/usr/bin/python3", "/Users/alice/bin/todays_reminders.py"]
+    # Optional: this person's memory in Honcho. observer = their agent's aiPeer, so the car and the agent share it.
+    # honcho: {observer: alice-agent, peer: alice}
 
   bob:
     name: Bob
