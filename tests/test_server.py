@@ -19,6 +19,7 @@ def cfg(tmp_path, monkeypatch):
     p.write_text(f"""
 server: {{public_host: agent.example.com}}
 memory_root: {tmp_path}/memory
+backlog_file: {tmp_path}/backlog.json
 people:
   alice: {{name: Alice, url_key: "env:HGC_KEY_ALICE", topics: "her garden"}}
   bob: {{name: Bob, url_key: "env:HGC_KEY_BOB", agent: {{path: /p/bob/v1/responses}}}}
@@ -43,7 +44,7 @@ def test_tools_and_identity_by_address(cfg, monkeypatch):
     monkeypatch.setattr(server.AgentClient, "ask", lambda self, person, req: asked.append(person.id) or "ok")
     with TestClient(server.build_app(cfg)) as c:
         names = [t["name"] for t in rpc(c, KEY_A, "tools/list")["tools"]]
-        assert names == ["my_context", "ask_my_agent", "remember", "recall", "forget"]
+        assert names == ["my_context", "ask_my_agent", "send_to_backlog", "remember", "recall", "forget"]
         assert call(c, KEY_A, "remember", text="Grows tomatoes every summer", kind="preference").startswith("Remembered")
         assert "Grows tomatoes" in call(c, KEY_A, "my_context")
         assert "tomatoes" not in call(c, KEY_B, "my_context")      # Bob's address reaches Bob's memory only

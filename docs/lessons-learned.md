@@ -63,3 +63,16 @@ browsers passed. Grok's requests pass. Only your own test scripts are affected.
 
 Custom connectors work on free Grok accounts. Grok Bot (a paid add-on) is not needed: the person's agent does the
 work. Heavy use may hit a free account's usage limit sooner, because tool calls add text.
+
+## Grok re-sends a request when a tool stalls
+
+One long request (over two minutes) came in six times in three and a half minutes, each reworded by Grok. The agent
+worked through them one by one for ten minutes, while the driver heard only silence. Normal answers took 4 to 13
+seconds and never hit this. How long Grok waits isn't documented; the first re-send came after 28 seconds. Answer fast
+and say the job is still running (docs/backlog.md).
+
+## Grok rewrites what the person says
+
+The agent gets Grok's version of the request, not the spoken words. "Send this to my other assistant, ask it to test
+this" arrived as "test this", with the destination gone, so the agent did the job itself. Grok can only reach the tools
+it has, so give it an explicit one for passing things on.

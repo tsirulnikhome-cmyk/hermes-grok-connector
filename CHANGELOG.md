@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 (2026-11-02)
+
+- New tool `send_to_backlog`: the person says "pass this on" or "put this in the backlog", and it's saved at once to a
+  JSON file with the recent conversation. Read it with `hermes-grok-connector backlog`, or from any coding assistant on
+  the machine. See docs/backlog.md.
+- `ask_my_agent` always answers within `wait_seconds` (default 20). A long job keeps running, its answer goes to the
+  person's optional `notify_command` and is read out at the next request, and repeats while it runs aren't started.
+  The default agent `timeout` is now 600, since nobody is waiting on the line.
+
 ## 0.2.0 (2026-11-01)
 
 - Optional Honcho memory backend, per person (`honcho:` in the config, docs/memory.md): organized facts, a card per

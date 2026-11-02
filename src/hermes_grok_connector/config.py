@@ -48,7 +48,8 @@ class Agent:
     path: str = "/v1/responses"          # Hermes multi-profile: /p/<profile>/v1/responses
     api_key: str = ""                     # secret reference
     model: str = "hermes-agent"
-    timeout: int = 170
+    timeout: int = 600                    # the job itself; the person hears something after wait_seconds anyway
+    wait_seconds: int = 20                # then ask_my_agent says "still working" and the job keeps running
     session_key: str = ""                 # X-Hermes-Session-Key, keeps one conversation thread per person
 
 
@@ -76,6 +77,7 @@ class Person:
     topics: str = DEFAULT_TOPICS
     context_command: list[str] = field(default_factory=list)  # extra briefing lines, e.g. today's reminders
     honcho: HonchoPeer | None = None      # optional: keep this person's memory in Honcho instead of files
+    notify_command: list[str] = field(default_factory=list)  # gets a late answer on stdin, e.g. a script that texts it
 
 
 @dataclass
@@ -85,6 +87,7 @@ class Config:
     port: int
     people: dict[str, Person]
     voice: str
+    backlog_file: Path = Path("~/.hermes-grok-connector/backlog.json").expanduser()
 
 
 VOICE = ("{name} is talking to you by voice through Grok, often while driving. Answer in one to three short spoken "
@@ -108,6 +111,7 @@ def load(path: str | Path) -> Config:
         agent = Agent(**{**defaults, **(p.get("agent") or {})})
         agent.session_key = agent.session_key or f"grok-{pid}"
         cmd = p.get("context_command") or []
+        notify = p.get("notify_command") or []
         peer = None
         if p.get("honcho"):
             if not honcho:
@@ -117,10 +121,12 @@ def load(path: str | Path) -> Config:
         people[pid] = Person(id=pid, name=p.get("name", pid.title()), url_key=p["url_key"], agent=agent,
                              memory_dir=Path(p.get("memory_dir", memory_root / pid)).expanduser(),
                              topics=p.get("topics", DEFAULT_TOPICS),
-                             context_command=cmd if isinstance(cmd, list) else str(cmd).split(), honcho=peer)
+                             context_command=cmd if isinstance(cmd, list) else str(cmd).split(), honcho=peer,
+                             notify_command=notify if isinstance(notify, list) else str(notify).split())
     if not people:
         raise ConfigError("no people configured")
     if not server.get("public_host"):
         raise ConfigError("server.public_host is required (the hostname Grok reaches, e.g. agent.example.com)")
     return Config(public_host=server["public_host"], host=server.get("host", "127.0.0.1"),
-                  port=int(server.get("port", 8797)), people=people, voice=raw.get("voice_instructions", VOICE))
+                  port=int(server.get("port", 8797)), people=people, voice=raw.get("voice_instructions", VOICE),
+                  backlog_file=Path(raw.get("backlog_file", "~/.hermes-grok-connector/backlog.json")).expanduser())

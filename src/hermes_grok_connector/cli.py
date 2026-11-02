@@ -8,6 +8,9 @@
   memory <person> add <kind> <text>      kind: preference | person | about | fact | plan | event
   memory <person> forget <id-or-words>
   memory <person> briefing    print what Grok gets at the start of a conversation
+  backlog [open|all]          list what people sent from the car
+  backlog show <n>            one item in full, with the conversation saved with it
+  backlog close <n> <note>    mark it done
 
 Options: --config PATH (default: $HGC_CONFIG or ~/.hermes-grok-connector/people.yaml)
 """
@@ -18,11 +21,28 @@ import os
 import secrets
 import sys
 
+from . import backlog as backlog_mod
 from . import config as config_mod
 from .agent import AgentClient
 from .honcho_memory import memory_for
 from .memory import MemoryError_
 from .server import extra_context, serve
+
+
+def _backlog(cfg, args: list[str]) -> int:
+    sub = args[0] if args else "open"
+    if sub == "show" and len(args) == 2:
+        print(backlog_mod.show(cfg.backlog_file, int(args[1])))
+    elif sub == "close" and len(args) >= 3:
+        print(backlog_mod.close(cfg.backlog_file, int(args[1]), " ".join(args[2:])))
+    elif sub in ("open", "all"):
+        for i in backlog_mod.items(cfg.backlog_file):
+            if sub == "all" or i["status"] == "open":
+                print(f"#{i['n']} [{i['type']}] {i['status']} {i['logged']} from {i['from']}: {i['note'][:200]}")
+    else:
+        print(__doc__)
+        return 2
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -43,6 +63,8 @@ def main(argv: list[str] | None = None) -> int:
     if cmd == "serve":
         serve(cfg)
         return 0
+    if cmd == "backlog":
+        return _backlog(cfg, args[1:])
     if len(args) < 2 or args[1] not in cfg.people:
         print(f"unknown person; configured: {', '.join(cfg.people)}", file=sys.stderr)
         return 2

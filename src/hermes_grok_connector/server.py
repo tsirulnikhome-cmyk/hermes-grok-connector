@@ -5,7 +5,8 @@ server and then gave up before opening the sign-in page (see docs/lessons-learne
 address is the credential and decides whose agent and memory answer. In a Tesla, the car's Grok sign-in follows
 the driver profile, so each driver reaches their own agent.
 
-Five tools per person: my_context, ask_my_agent, remember, recall, forget. All of them tell Grok to work silently.
+Six tools per person: my_context, ask_my_agent, send_to_backlog, remember, recall, forget. Most tell Grok to work
+silently; send_to_backlog and a slow ask_my_agent tell it to say something back.
 The person's live briefing is also placed in the connector's instructions on every connection.
 """
 from __future__ import annotations
@@ -19,6 +20,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
 from .agent import AgentClient
+from . import backlog as backlog_mod
 from .config import Config, Person, resolve_secret
 from .honcho_memory import memory_for
 from .memory import MemoryError_
@@ -36,6 +38,15 @@ CONTEXT_DOC = ("Answers \"what do you know about me\", \"who am I\", \"what's my
 ASK_DOC = ("Ask the person's own assistant agent. ALWAYS use this for {topics}. Pass the person's request in their "
            "own words with any needed context from this conversation. If the agent asks a question, read it to the "
            "person and pass their answer (for example 'yes') in the next call.")
+ASK_REPLY = (" Always say something back. If the result says a request is still running, say that out loud and don't "
+             "call again for it.")
+BACKLOG_DOC = ("Save something to be followed up later at a computer, in a backlog file that the person or their coding "
+               "assistants read. Use when they say send or pass this on, put this in the backlog or the questions file, "
+               "have this checked later, or give feedback, a question or a bug to follow up. Use this instead of "
+               "ask_my_agent for those: it saves at once and doesn't do the work. note: what they want, as close to "
+               "their own words as you can. kind: bug | question | idea | concern. details: anything from this "
+               "conversation needed to act on it, including what you told them yourself. Call it once for each thing, "
+               "then always tell them out loud that it's saved and its number.")
 REMEMBER_DOC = ("Save one lasting fact about the person in their own memory. Use when they say 'remember...', or tell "
                 "you something that will still be true next week: a preference, a person in their life, a routine or "
                 "schedule, a plan or date, a fact about their home or car. kind: preference | person | about (always "
@@ -65,7 +76,7 @@ def extra_context(person: Person) -> list[str]:
         return []
 
 
-def person_server(person: Person, agent: AgentClient) -> MCPServer:
+def person_server(person: Person, agent: AgentClient, backlog_file=None) -> MCPServer:
     mem = memory_for(person)
     s = MCPServer(name="home-agent", version="0.1.0", instructions=INSTRUCTIONS.format(topics=person.topics))
 
@@ -77,10 +88,26 @@ def person_server(person: Person, agent: AgentClient) -> MCPServer:
         except MemoryError_ as e:
             return str(e)
 
-    @s.tool(description=ASK_DOC.format(topics=person.topics) + SILENT)
+    @s.tool(description=ASK_DOC.format(topics=person.topics) + SILENT + ASK_REPLY)
     def ask_my_agent(request: str) -> str:
         _log(person.id, "ask_my_agent")
-        return agent.ask(person, request)
+        return agent.ask_soon(person, request)
+
+    @s.tool(description=BACKLOG_DOC)
+    def send_to_backlog(note: str, kind: str = "question", details: str = "") -> str:
+        _log(person.id, "send_to_backlog")
+        note = " ".join((note or "").split())
+        if not note:
+            return "Nothing was saved, because the note was empty. Ask the person what to save."
+        recent = agent.recent_dialog(person)
+        parts = ([f"From Grok:\n{details.strip()}"] if details.strip() else []) + \
+                ([f"Through the agent:\n{recent}"] if recent else [])
+        try:
+            item = backlog_mod.add(backlog_file or agent.cfg.backlog_file, person.name, kind, note, "\n\n".join(parts))
+        except OSError as e:
+            print(f"backlog failed for {person.id}: {e!r}", file=sys.stderr, flush=True)
+            return "That could not be saved to the backlog right now. Tell the person, and ask them to try again later."
+        return f"Saved to the backlog as number {item['n']}. Say so to the person, in one short sentence."
 
     @s.tool(description=REMEMBER_DOC + SILENT)
     def remember(text: str, kind: str = "fact", replaces: str = "") -> str:
