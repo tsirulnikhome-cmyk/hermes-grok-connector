@@ -49,7 +49,10 @@ class Agent:
     api_key: str = ""                     # secret reference
     model: str = "hermes-agent"
     timeout: int = 600                    # the job itself; the person hears something after wait_seconds anyway
-    wait_seconds: int = 20                # then ask_my_agent says "still working" and the job keeps running
+    wait_seconds: float = 20              # then ask_my_agent says "still working", the job keeps running and Grok calls again
+    repeat_wait_seconds: float = 12       # how long each of those repeat calls waits for the job
+    reasoning_effort: str = "low"         # sent as model_options (Hermes); empty sends nothing
+    check_claims: bool = True             # warn when the agent says it did something and no matching tool ran
     session_key: str = ""                 # X-Hermes-Session-Key, keeps one conversation thread per person
 
 
@@ -91,7 +94,7 @@ class Config:
 
 
 VOICE = ("{name} is talking to you by voice through Grok, often while driving. Answer in one to three short spoken "
-         "sentences: no lists, links, tables, emoji or markdown. Before anything that changes something, say exactly "
+         "sentences: no lists, links, tables, emoji, markdown, IDs or long numbers. Before anything that changes something, say exactly "
          "what you will do and ask for a yes; a 'yes' may arrive as the next message. If a tool you would need is not "
          "available here, say it isn't available from the car.")
 

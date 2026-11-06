@@ -7,11 +7,13 @@ import pytest
 
 from hermes_grok_connector import backlog, cli
 from hermes_grok_connector import config as config_mod
+from hermes_grok_connector import agent as agent_mod
 from hermes_grok_connector.agent import AgentClient
 
 
 @pytest.fixture
 def cfg(tmp_path, monkeypatch):
+    monkeypatch.setattr(agent_mod, "NOTIFY_AFTER", 0.05)
     monkeypatch.setenv("HGC_KEY_ALICE", "a" * 32)
     monkeypatch.setenv("HGC_KEY_BOB", "b" * 32)
     p = tmp_path / "people.yaml"
@@ -19,7 +21,7 @@ def cfg(tmp_path, monkeypatch):
 server: {{public_host: agent.example.com}}
 memory_root: {tmp_path}/memory
 backlog_file: {tmp_path}/backlog.json
-agent_defaults: {{wait_seconds: 0.05}}
+agent_defaults: {{wait_seconds: 0.05, repeat_wait_seconds: 0.05}}
 people:
   alice: {{name: Alice, url_key: "env:HGC_KEY_ALICE", notify_command: ["tee", "{tmp_path}/late.txt"]}}
   bob: {{name: Bob, url_key: "env:HGC_KEY_BOB"}}
@@ -49,11 +51,11 @@ def test_quick_answer_comes_straight_back(cfg):
     assert a.ask_soon(cfg.people["alice"], "how many") == "three"
 
 
-def test_slow_answer_says_so_then_notifies_and_reads_it_out_next(cfg):
+def test_slow_answer_says_call_again_then_notifies_and_reads_it_out_next(cfg):
     a, gate, alice = AgentClient(cfg), threading.Event(), cfg.people["alice"]
     gated(a, gate)
     reply = a.ask_soon(alice, "big check")
-    assert "keeps running" in reply and "by message" in reply
+    assert "call ask_my_agent again" in reply
     gate.set()
     late = Path(cfg.backlog_file).parent / "late.txt"
     wait_until(lambda: late.exists() and "answer to big check" in late.read_text())
@@ -63,11 +65,59 @@ def test_slow_answer_says_so_then_notifies_and_reads_it_out_next(cfg):
     assert "answer to big check" not in a.ask_soon(alice, "again")          # read out once
 
 
-def test_no_notify_command_says_it_will_be_read_out(cfg):
-    a, gate = AgentClient(cfg), threading.Event()
-    gated(a, gate)
-    assert "next request" in a.ask_soon(cfg.people["bob"], "big check")
+def test_repeat_calls_change_the_line_then_stop(cfg):
+    a, gate, seen, bob = AgentClient(cfg), threading.Event(), [], cfg.people["bob"]
+    gated(a, gate, seen)
+    assert a.ask_soon(bob, "big check") == agent_mod.LATE
+    assert a.ask_soon(bob, "big check") == agent_mod.LATE_AGAIN
+    stop = a.ask_soon(bob, "big check")
+    assert "next request" in stop and "don't call again" in stop
+    assert seen == ["big check"]
     gate.set()
+
+
+def test_asking_again_collects_the_answer_and_nothing_is_notified(cfg, monkeypatch):
+    monkeypatch.setattr(agent_mod, "NOTIFY_AFTER", 0.2)
+    a, gate, seen, alice = AgentClient(cfg), threading.Event(), [], cfg.people["alice"]
+    gated(a, gate, seen)
+    a.ask_soon(alice, "Read the email, then compare")
+    gate.set()
+    wait_until(lambda: alice.id not in a._jobs)
+    assert "answer to Read the email" in a.ask_soon(alice, "Read the email. Then compare")
+    assert seen == ["Read the email, then compare"]
+    time.sleep(0.3)
+    assert not (Path(cfg.backlog_file).parent / "late.txt").exists()
+
+
+@pytest.mark.parametrize("answer, tools, flagged", [
+    ("Your reminder is set for five.", [], True),
+    ("Your reminder is set for five.", [("mcp__x__set_reminder", True)], False),
+    ("Your reminder is set for five.", [("mcp__x__set_reminder", False)], True),
+    ("I've locked the car.", [("mcp__x__car_lock", True)], False),
+    ("I've locked the car.", [], True),
+    ("I'll let you know when it arrives.", [], True),
+    ("I'll text her no thanks. Okay?", [], False),
+    ("Want me to set a reminder?", [], False),
+    ("I didn't set a reminder.", [], False),
+    ("You have a reminder set for five.", [("mcp__x__list_reminders", True)], False),
+    ("The estimate pays nothing.", [], False),
+])
+def test_what_it_says_it_did_is_checked_against_the_tools(answer, tools, flagged):
+    assert bool(agent_mod.unconfirmed(answer, tools)) is flagged
+
+
+def test_no_tool_record_means_no_check():
+    assert agent_mod.unconfirmed("Your reminder is set.", None) == ""
+
+
+def test_a_claim_with_no_tool_is_spoken_with_the_warning(cfg):
+    a = AgentClient(cfg)
+    def ask(person, request):
+        agent_mod._ran.tools = []
+        return "Your reminder is set for five."
+    a.ask = ask
+    cfg.people["bob"].agent.wait_seconds = 1
+    assert agent_mod.UNCONFIRMED.strip() in a.ask_soon(cfg.people["bob"], "set it")
 
 
 def test_repeats_while_running_are_not_started(cfg):

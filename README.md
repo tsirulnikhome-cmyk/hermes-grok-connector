@@ -82,7 +82,7 @@ The full text and test phrases are in [docs/grok-and-tesla.md](docs/grok-and-tes
 | Tool | Grok uses it | What it does | Cost |
 |---|---|---|---|
 | `my_context` | at the start of a conversation, "what do you know about me" | profile, recent notes, optional extra lines (e.g. today's reminders) | free, instant |
-| `ask_my_agent` | personal requests: reminders, tasks, your topics | asks the person's agent, chains replies for the day so a spoken "yes" works; always answers within 20 seconds, a long job keeps running | your agent's usual cost |
+| `ask_my_agent` | personal requests: reminders, tasks, your topics | asks the person's agent, chains replies for the day so a spoken "yes" works; always answers within `wait_seconds`, a long job keeps running | your agent's usual cost |
 | `send_to_backlog` | "put this in the backlog", "pass this on" | saves the note and recent conversation to a file anything on the machine can read | free, instant |
 | `remember` | "remember…", lasting facts | saves to profile or notebook; a close match is updated, not duplicated | free |
 | `recall` | "what did I say about…" | searches the notebook | free |

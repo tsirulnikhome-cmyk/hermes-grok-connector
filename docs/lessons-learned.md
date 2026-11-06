@@ -76,3 +76,19 @@ and say the job is still running (docs/backlog.md).
 The agent gets Grok's version of the request, not the spoken words. "Send this to my other assistant, ask it to test
 this" arrived as "test this", with the destination gone, so the agent did the job itself. Grok can only reach the tools
 it has, so give it an explicit one for passing things on.
+
+## The wait is the model, not the tools
+
+Timing one comparison request: 14.6 seconds in the agent, of which 11.7 was the model thinking and 2.8 was tools. A
+mail tool answered in under half a second. Lowering reasoning effort for car requests took a similar request from 33-35
+seconds to 19. People building other voice agents report the same split. Measure each stage before making tools faster.
+
+## An agent's "done" is only its word
+
+The call can sound fine while nothing happened. Check claims against the tools that ran in that reply, in code, rather
+than trusting the sentence or asking a second model to judge it.
+
+## Tool results steer Grok better than anything else
+
+Grok keeps a saved tool list and may not re-read connector instructions, but it reads every tool result. Wording that must
+always apply, such as how to speak or what to do next, belongs in the result.

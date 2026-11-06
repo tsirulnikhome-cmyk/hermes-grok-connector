@@ -6,7 +6,8 @@ address is the credential and decides whose agent and memory answer. In a Tesla,
 the driver profile, so each driver reaches their own agent.
 
 Six tools per person: my_context, ask_my_agent, send_to_backlog, remember, recall, forget. Most tell Grok to work
-silently; send_to_backlog and a slow ask_my_agent tell it to say something back.
+silently; send_to_backlog and a slow ask_my_agent tell it to say something back. Every result ends with STYLE, because
+results reach Grok every time, unlike its saved tool list and the connector instructions.
 The person's live briefing is also placed in the connector's instructions on every connection.
 """
 from __future__ import annotations
@@ -38,8 +39,11 @@ CONTEXT_DOC = ("Answers \"what do you know about me\", \"who am I\", \"what's my
 ASK_DOC = ("Ask the person's own assistant agent. ALWAYS use this for {topics}. Pass the person's request in their "
            "own words with any needed context from this conversation. If the agent asks a question, read it to the "
            "person and pass their answer (for example 'yes') in the next call.")
-ASK_REPLY = (" Always say something back. If the result says a request is still running, say that out loud and don't "
-             "call again for it.")
+ASK_REPLY = (" Always say something back. If the result says a request is still working, say that out loud, then call "
+             "again with the same request to get the answer, unless it says not to.")
+STYLE = ("\n\n(Speak this the way you'd tell a friend, in as few words as it takes. No closing line such as \"let me know\", "
+         "\"anything else\" or \"enjoy your drive\". When a later request needs looking up, say two or three words like "
+         "\"one sec\" before you call ask_my_agent, not the same ones each time.)")
 BACKLOG_DOC = ("Save something to be followed up later at a computer, in a backlog file that the person or their coding "
                "assistants read. Use when they say send or pass this on, put this in the backlog or the questions file, "
                "have this checked later, or give feedback, a question or a bug to follow up. Use this instead of "
@@ -84,14 +88,14 @@ def person_server(person: Person, agent: AgentClient, backlog_file=None) -> MCPS
     def my_context() -> str:
         _log(person.id, "my_context")
         try:
-            return mem.briefing(person.name, extra_context(person))
+            return mem.briefing(person.name, extra_context(person)) + STYLE
         except MemoryError_ as e:
             return str(e)
 
     @s.tool(description=ASK_DOC.format(topics=person.topics) + SILENT + ASK_REPLY)
     def ask_my_agent(request: str) -> str:
         _log(person.id, "ask_my_agent")
-        return agent.ask_soon(person, request)
+        return agent.ask_soon(person, request) + STYLE
 
     @s.tool(description=BACKLOG_DOC)
     def send_to_backlog(note: str, kind: str = "question", details: str = "") -> str:

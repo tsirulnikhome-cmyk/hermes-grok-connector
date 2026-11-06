@@ -24,7 +24,10 @@ agent_defaults:
   path: /v1/responses
   model: hermes-agent
   timeout: 600                     # the job itself
-  wait_seconds: 20                 # then ask_my_agent says "still working" and the job keeps running
+  wait_seconds: 20                 # then ask_my_agent says "still working", the job keeps running and Grok calls again (docs/backlog.md)
+  # repeat_wait_seconds: 12        # how long each repeat call waits for the job
+  # reasoning_effort: low          # sent as model_options (Hermes); "" sends nothing
+  # check_claims: true             # warn when the agent says it did something and no matching tool ran
 
 people:
   alice:

@@ -33,9 +33,12 @@ Grok doesn't wait long for a tool. When one stalls it tends to send the request 
 nothing (see lessons-learned.md). So `ask_my_agent` always returns within `wait_seconds` (default 20):
 
 - A normal answer comes straight back.
-- A longer job keeps running, and Grok is told to say so out loud and not to ask again.
-- Repeats while it runs get "still running" and aren't started.
-- The late answer is read out at the person's next request, and is also passed on stdin to `notify_command` if set:
+- A longer job keeps running, and Grok is told to say so out loud and call again, at most twice more. Each repeat waits
+  up to `repeat_wait_seconds` for the job and collects the answer; it never starts a second one. This hasn't yet been
+  confirmed in a car.
+- A different request while it runs gets "still working" and isn't started.
+- A late answer nobody collected is read out at the person's next request, and after 2 minutes is also passed on stdin
+  to `notify_command` if set:
 
 ```yaml
 people:
